@@ -1,0 +1,16 @@
+global: { scrape_interval: 15s }
+scrape_configs:
+- job_name: self
+  static_configs: [{ targets: ['prometheus:9090'] }]
+- job_name: souveratech-apps
+  static_configs:
+    - targets:
+      - core-meta:8080
+      - scheduler:8080
+      - core-security:8080
+      - core-i18n:8080
+      - core-versioning:8080
+      - core-graph:8080
+      - notifications:8080
+      - etl:8080
+      - discovery:8080

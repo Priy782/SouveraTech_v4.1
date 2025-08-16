@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>SouveraTech UI</title></head>
+<body>
+<h1>SouveraTech — UI minimale</h1>
+<button id="load">Charger objets</button>
+<pre id="out"></pre>
+<script>
+document.getElementById('load').onclick = async () => {
+  const r = await fetch('/api/meta/objects', {credentials:'include'});
+  const j = await r.json();
+  document.getElementById('out').textContent = JSON.stringify(j, null, 2);
+};
+</script>
+</body></html>

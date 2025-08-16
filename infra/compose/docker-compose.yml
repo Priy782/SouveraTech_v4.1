@@ -1,0 +1,192 @@
+name: ${PROJECT_NAME}
+services:
+  postgres:
+    image: postgres:${POSTGRES_VERSION}
+    environment:
+      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      TZ: ${TZ}
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    ports: ["5432:5432"]
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+
+  valkey:
+    image: valkey/valkey:${VALKEY_VERSION}
+    command: ["valkey-server","--save","60","1000","--appendonly","yes"]
+    ports: ["6379:6379"]
+
+  qdrant:
+    image: qdrant/qdrant:v${QDRANT_VERSION}
+    ports: ["6333:6333","6334:6334"]
+    volumes: [ "qdrant:/qdrant/storage" ]
+
+  opensearch:
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+      - plugins.security.ssl.http.enabled=false   # <— hinzufügen
+
+    ulimits:
+      memlock: {soft: -1, hard: -1}
+      nofile: {soft: 65536, hard: 65536}
+    ports: ["9200:9200","9600:9600"]
+    volumes: [ "opensearch:/usr/share/opensearch/data" ]
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_DASH_VERSION}
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+    ports: ["5601:5601"]
+    depends_on: [ opensearch ]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.osd.rule: Host(`osd.localhost`)
+      traefik.http.routers.osd.entrypoints: web
+      traefik.http.services.osd.loadbalancer.server.port: "5601"
+
+  minio:
+    image: minio/minio:${MINIO_VERSION}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports: ["9000:9000","9001:9001"]
+    volumes: [ "minio:/data" ]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
+    command: start-dev
+    environment:
+      KC_HOSTNAME: localhost
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      TZ: ${TZ}
+    ports: ["8088:8080"]
+
+  prometheus:
+    image: prom/prometheus:v${PROMETHEUS_VERSION}
+    ports: ["9090:9090"]
+    volumes: [ "./prometheus.yml:/etc/prometheus/prometheus.yml:ro" ]
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    ports: ["3000:3000"]
+
+  traefik:
+    image: traefik:v${TRAEFIK_VERSION}
+    command: [ "--api.insecure=true","--providers.docker=true","--entryPoints.web.address=:80","--entryPoints.websecure.address=:443" ]
+    ports: ["80:80","443:443"]
+    volumes: [ "/var/run/docker.sock:/var/run/docker.sock:ro" ]
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:${OAUTH2_PROXY_VERSION}
+    env_file:
+      - ./.env.proxy
+      - ./.env
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://keycloak:8080/realms/${PROJECT_NAME}
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_UPSTREAMS: "file:///dev/null"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+    ports: ["4180:4180"]
+    depends_on: [ keycloak ]
+    labels:
+      traefik.enable: "true"
+      traefik.http.middlewares.auth.forwardauth.address: "http://oauth2-proxy:4180/oauth2/auth"
+      traefik.http.middlewares.auth.forwardauth.authResponseHeaders: "X-Auth-Request-Email,Authorization"
+
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION}
+    ports: ["11434:11434"]
+    volumes: [ "ollama:/root/.ollama" ]
+
+  # Services applicatifs (buildés plus tard)
+  core-meta:
+    build: { context: ../../apps/core-meta }
+    env_file: [ ../../.env.app, ../../apps/core-meta/.env ]
+    depends_on: [ postgres ]
+    ports: ["18081:8080"]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.coremeta.rule: PathPrefix(`/api/meta`)
+      traefik.http.routers.coremeta.entrypoints: web
+      traefik.http.routers.coremeta.middlewares: auth@docker
+      traefik.http.services.coremeta.loadbalancer.server.port: "8080"
+
+  scheduler:
+    build: { context: ../../apps/scheduler }
+    env_file: [ ../../.env.app, ../../apps/scheduler/.env ]
+    depends_on: [ postgres ]
+    ports: ["18082:8080"]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.scheduler.rule: PathPrefix(`/api/scheduled_jobs`)
+      traefik.http.routers.scheduler.entrypoints: web
+      traefik.http.routers.scheduler.middlewares: auth@docker
+      traefik.http.services.scheduler.loadbalancer.server.port: "8080"
+
+  core-security:
+    build: { context: ../../apps/core-security }
+    env_file: [ ../../.env.app, ../../apps/core-security/.env ]
+    depends_on: [ postgres ]
+    ports: ["18083:8080"]
+
+  core-i18n:
+    build: { context: ../../apps/core-i18n }
+    env_file: [ ../../.env.app, ../../apps/core-i18n/.env ]
+    depends_on: [ postgres, qdrant ]
+    ports: ["18084:8080"]
+
+  core-versioning:
+    build: { context: ../../apps/core-versioning }
+    env_file: [ ../../.env.app, ../../apps/core-versioning/.env ]
+    depends_on: [ postgres ]
+    ports: ["18085:8080"]
+
+  core-graph:
+    build: { context: ../../apps/core-graph }
+    env_file: [ ../../.env.app, ../../apps/core-graph/.env ]
+    depends_on: [ postgres ]
+    ports: ["18086:8080"]
+
+  notifications:
+    build: { context: ../../apps/notifications }
+    env_file: [ ../../.env.app, ../../apps/notifications/.env ]
+    depends_on: [ postgres ]
+    ports: ["18087:8080"]
+
+  etl:
+    build: { context: ../../apps/etl }
+    env_file: [ ../../.env.app, ../../apps/etl/.env ]
+    depends_on: [ postgres ]
+    ports: ["18088:8080"]
+
+  discovery:
+    build: { context: ../../apps/discovery }
+    env_file: [ ../../.env.app, ../../apps/discovery/.env ]
+    depends_on: [ postgres ]
+    ports: ["18089:8080"]
+
+  ui:
+    build: { context: ../../apps/ui }
+    ports: ["8085:80"]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ui.rule: PathPrefix(`/`)
+      traefik.http.routers.ui.entrypoints: web
+      traefik.http.services.ui.loadbalancer.server.port: "80"
+
+volumes:
+  pgdata: {}
+  qdrant: {}
+  minio: {}
+  opensearch: {}
+  ollama: {}

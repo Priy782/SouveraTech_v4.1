@@ -1,0 +1,144 @@
+# -------------------------
+# OS / Editor / IDE
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.fleet/
+*.code-workspace
+
+# -------------------------
+# Node / TypeScript / JS
+# -------------------------
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+# Caches & Builds
+.next/
+.vercel/
+.out/
+out/
+dist/
+build/
+.cache/
+.turbo/
+.eslintcache
+.nyc_output/
+coverage/
+# Playwright / Cypress (falls vorhanden)
+playwright-report/
+test-results/
+.cypress-cache/
+# Storybook
+storybook-static/
+
+# -------------------------
+# Next.js spezifisch
+# -------------------------
+**/.next/
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# -------------------------
+# Monorepo (apps/packages)
+# -------------------------
+apps/*/dist/
+apps/*/build/
+apps/*/.next/
+apps/*/node_modules/
+packages/*/dist/
+packages/*/build/
+packages/*/node_modules/
+
+# -------------------------
+# Docker / Compose / Infra
+# -------------------------
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.sample
+!**/.env.template
+!**/.env.local.example
+
+# lokale/individuelle Compose-Overrides
+infra/compose/*local*.yml
+infra/compose/*override*.yml
+
+# optionale Daten-/Volume-Verzeichnisse (falls als Bind-Mounts im Repo)
+infra/data/
+infra/volumes/
+data/
+tmp/
+logs/
+*.log
+
+# Zertifikate/Keys (echte Secrets nicht committen)
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# -------------------------
+# Python (falls ETL/Skripte)
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+.envrc
+
+# -------------------------
+# Java/.NET (falls vorkommend)
+# -------------------------
+# Java
+target/
+*.class
+# .NET
+bin/
+obj/
+*.user
+*.userosscache
+*.suo
+*.cache
+*.dll
+*.pdb
+
+# -------------------------
+# Daten/Artefakte
+# -------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# -------------------------
+# Project-spezifische UI (Next.js)
+# -------------------------
+apps/ui-next/.next/
+apps/ui-next/node_modules/
+apps/ui-next/out/
+apps/ui-next/.vercel/
