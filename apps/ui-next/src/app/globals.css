@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
+/* ===== CSS-Variablen für Light/Dark ===== */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    color-scheme: dark;
   }
 }
 
+/* ===== Tailwind Theme Tokens (v4) =====
+   -> erzeugt Klassen wie bg-card, border-border, text-muted, rounded-xl2, shadow-soft, ...
+*/
+@theme {
+  /* Farben */
+  --color-bg: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: #23283b;
+  --color-card: color-mix(in oklab, var(--background) 85%, #141823 15%);
+  --color-accent: #4f46e5;
+  --color-muted: #94a3b8;
+
+  /* Radii (ergibt z.B. rounded-xl2) */
+  --radius-xl2: 1rem;
+
+  /* Schatten (ergibt z.B. shadow-soft) */
+  --shadow-soft: 0 10px 30px -10px rgba(0,0,0,0.35);
+
+  /* Fonts (nutzt neue Tailwind v4 Font-Tokens) */
+  --font-sans: var(--font-geist-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji");
+  --font-mono: var(--font-geist-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+}
+
+/* ===== Global Layout ===== */
+html, body, #__next {
+  height: 100%;
+}
+
 body {
+  font-family: var(--font-sans);
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===== Utility-Komponenten (nutzen die obigen Tokens) ===== */
+.input-base {
+  @apply w-full rounded-xl2 border border-border bg-card/70 backdrop-blur px-4 py-4
+         outline-none focus:ring-2 focus:ring-accent/60 transition-shadow;
+}
+
+.btn {
+  @apply inline-flex items-center gap-2 rounded-xl2 border border-border bg-card px-4 py-2
+         hover:bg-card/70 active:scale-[0.99] transition shadow-soft;
+}
+
+.icon-btn {
+  @apply rounded-xl2 border border-border bg-card p-2 hover:bg-card/70 transition;
+}
+
+.content-card {
+  @apply rounded-xl2 border border-border bg-card/60 backdrop-blur shadow-soft;
+}
+
+/* Optional: kleine Defaults für Texte/Farben */
+.text-muted { @apply text-muted; }        /* erzeugt Klasse, falls du sie direkt brauchst */
+.text-foreground { @apply text-foreground; }
+.bg-bg { @apply bg-bg; }                  /* redundant, aber macht explizit */
